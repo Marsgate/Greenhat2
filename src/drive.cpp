@@ -10,6 +10,9 @@ const int left_rear = PORT2;
 const int right_front = PORT3;
 const int right_rear = PORT4;
 
+//gyro port (set to 0 if not using)
+const int gyro_port = 0;
+
 //distance constants
 const int distance_constant = 545; //ticks per tile
 const double degree_constant = 2.3; //ticks per degree
@@ -41,6 +44,8 @@ static int driveTarget = 0;
 static int turnTarget = 0;
 static int maxSpeed = MAX;
 
+//gyro
+inertial iSens(gyro_port);
 
 //motors
 motor left1(left_front, gearSetting::ratio18_1, 0);
@@ -85,12 +90,14 @@ int slew(int speed){
     step = deccel_step;
 
   if(speed > lastSpeed + step)
-    speed += step;
+    lastSpeed += step;
   else if(speed < lastSpeed - step)
-    speed -= step;
+    lastSpeed -= step;
+  else{
+    lastSpeed = speed;
+  }
 
-  lastSpeed = speed;
-  return speed;
+  return lastSpeed;
 }
 
 /**************************************************/
@@ -208,6 +215,9 @@ int driveTask(){
 
     //read sensors
     int sv = (right1.rotation(rotationUnits::deg) + left1.rotation(rotationUnits::deg)*driveMode)/2;
+    if(gyro_port != 0 && driveMode == -1){
+      sv = -iSens.rotation(deg);
+    }
 
     //speed
     int error = sp-sv;
@@ -221,7 +231,7 @@ int driveTask(){
     if(speed < -maxSpeed)
       speed = -maxSpeed;
 
-    slew(speed); //slew
+    speed = slew(speed); //slew
 
     //set motors
     left_drive(speed*driveMode);
@@ -231,6 +241,10 @@ int driveTask(){
 
 void initDrive(){
   task drive_task(driveTask);
+  if(gyro_port != 0){
+    iSens.calibrate();
+    while(iSens.isCalibrating()) delay(20);
+  }
 }
 
 void delay(int sleepTime){

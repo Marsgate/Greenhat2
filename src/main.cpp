@@ -13,12 +13,19 @@ void autonomous(void) {
 
 void usercontrol(void) {
   while (1) {
+
+    tankOp();
     if(Controller1.ButtonR1.pressing()){
-      intake.spin(fwd); //default is 100%
+      intake.spin(fwd, 100, pct);
     }else if(Controller1.ButtonR2.pressing()){
       intake.spin(rev, 50, pct);
     }else{
       intake.stop();
+    }
+
+    //autonomous button (starts auton from driver control for testing purposes)
+    if(Controller1.ButtonLeft.pressing() && !Competition.isFieldControl()){
+      autonomous();
     }
 
     delay(20);
