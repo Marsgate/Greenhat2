@@ -6,4 +6,4 @@ void  vexcodeInit( void );
 extern brain Brain;
 extern controller Controller1;
 extern motor_group intake;
-extern Pcontroller intakeController;
+extern Pcontroller intakeP;

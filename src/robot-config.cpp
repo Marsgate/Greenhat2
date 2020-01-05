@@ -10,7 +10,7 @@ controller Controller1 = controller(primary);
 motor intake_motor1 = motor(PORT5, ratio18_1, false);
 motor intake_motor2 = motor(PORT6, ratio18_1, true);
 motor_group intake(intake_motor1, intake_motor2);
-Pcontroller intakeController(intake, 0.1);
+Pcontroller intakeP(intake, 0.1);
 
 void vexcodeInit( void ) {
   initDrive();
