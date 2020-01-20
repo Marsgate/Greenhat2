@@ -12,6 +12,7 @@ void turnAsync(double sp);
 void drive(double sp, int speed = 100);
 void turn(double sp, int speed = 100);
 void fastDrive(double sp, int speed = 100);
+void timeDrive(int t, int speed = 100);
 
 void setSpeed(int speed);
 void setBrakeMode(vex::brakeType b);
