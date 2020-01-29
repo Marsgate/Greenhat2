@@ -185,6 +185,7 @@ void turn(double sp, int speed){
 }
 
 void fastDrive(double sp, int speed){
+  if(sp < 0) speed = -speed;
   reset();
   lastSpeed = MAX;
   driveMode = 0;
