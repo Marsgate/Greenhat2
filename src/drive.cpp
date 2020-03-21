@@ -67,7 +67,7 @@ void right_drive(int vel){
   right2.spin(directionType::fwd, vel, voltageUnits::mV);
 }
 
-void timeDrive(int t, int speed = 100){
+void timeDrive(int t, int speed){
   left_drive(speed);
   right_drive(speed);
   delay(t);
