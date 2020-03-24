@@ -21,6 +21,7 @@ const double degree_constant = 2.3; //ticks per degree
 //advanced tuning (PID and slew)
 
 //slew control (autonomous only)
+const int arc_step = 3;
 const int accel_step = 8; //smaller number = more slew
 const int deccel_step = 200; //200 = no slew
 
@@ -31,6 +32,9 @@ const double driveKD = .5;
 //turning constants
 const double turnKP = .8;
 const double turnKD = 3;
+
+//arc constants
+const double arcKP = .15;
 
 
 /**************************************************/
@@ -48,10 +52,10 @@ static int maxSpeed = MAX;
 inertial iSens(gyro_port);
 
 //motors
-motor left1(left_front, gearSetting::ratio18_1, 0);
-motor left2(left_rear, gearSetting::ratio18_1, 0);
-motor right1(right_front, gearSetting::ratio18_1, 1);
-motor right2(right_rear, gearSetting::ratio18_1, 1);
+motor left1(left_front, gearSetting::ratio6_1, 0);
+motor left2(left_rear, gearSetting::ratio6_1, 0);
+motor right1(right_front, gearSetting::ratio6_1, 1);
+motor right2(right_rear, gearSetting::ratio6_1, 1);
 
 /**************************************************/
 //basic control
@@ -74,6 +78,7 @@ void timeDrive(int t, int speed){
 }
 
 void reset(){
+  driveMode = 0;
   left1.resetRotation();
   left2.resetRotation();
   right1.resetRotation();
@@ -85,13 +90,28 @@ int drivePos(){
 }
 
 /**************************************************/
+//Velocity control
+void left_drive_vel(int vel){
+  left1.spin(fwd, vel, pct);
+  left2.spin(fwd, vel, pct);
+}
+
+void right_drive_vel(int vel){
+  right1.spin(fwd, vel, pct);
+  right2.spin(fwd, vel, pct);
+}
+
+/**************************************************/
 //slew control
 static int lastSpeed = 0;
 int slew(int speed){
   int step;
 
   if(abs(lastSpeed) < abs(speed))
-    step = accel_step;
+    if(driveMode == 0)
+      step = arc_step;
+    else
+      step = accel_step;
   else
     step = deccel_step;
 
@@ -187,7 +207,7 @@ void turn(double sp, int speed){
 void fastDrive(double sp, int speed){
   if(sp < 0) speed = -speed;
   reset();
-  lastSpeed = MAX;
+  lastSpeed = speed;
   driveMode = 0;
   left_drive(speed);
   right_drive(speed);
@@ -196,6 +216,174 @@ void fastDrive(double sp, int speed){
     while(drivePos() < sp * distance_constant) task::sleep(20);
   else
     while(drivePos() > sp * distance_constant) task::sleep(20);
+}
+
+void arc(bool mirror, int arc_length, double rad, int max){
+  reset();
+  int time_step = 0;
+  driveMode = 0;
+
+  //fix jerk bug between velocity movements
+  left_drive_vel(0);
+  right_drive_vel(0);
+  delay(10);
+
+  while(isDriving() || time_step < 250){
+
+    //speed
+    int error = arc_length-time_step;
+    int speed = error*arcKP;
+
+    //speed limiting
+    if(speed > max)
+      speed = max;
+    if(speed < -max)
+      speed = -max;
+
+    //prevent backtracking
+    if(arc_length > 0){
+      if(speed < 0)
+        speed = 0;
+    }else{
+      if(speed > 0)
+        speed = 0;
+    }
+
+    speed = slew(speed); //slew
+
+    int left_speed = speed;
+    int right_speed = speed;
+    
+    if(!mirror)
+      left_speed *= rad;
+    else
+      right_speed *= rad;
+
+    //assign drive motor speeds
+    left_drive_vel(left_speed);
+    right_drive_vel(right_speed);
+
+    //increment time step
+    time_step += 10;
+    delay(10);
+  }
+}
+
+void arcLeft(int arc_length, double rad, int max){
+  arc(false, arc_length, rad, max);
+}
+
+void arcRight(int arc_length, double rad, int max){
+  arc(true, arc_length, rad, max);
+}
+
+void scurve(bool mirror, int arc1, int mid, int arc2, int max){
+  reset();
+  int time_step = 0;
+  driveMode = 0;
+
+  //fix jerk bug between velocity movements
+  left_drive_vel(0);
+  right_drive_vel(0);
+  delay(10);
+
+  if(arc2 == 0)
+    arc2 = arc1;
+
+  //scaling based on max speed;
+  arc1 *= (float)40/max;
+  mid *= (float)40/max;
+  arc2 *= (float)40/max;
+
+  arc2 += 150;
+
+  //first arc
+  while (time_step < arc1){
+
+    int speed = slew(max); //slew
+
+    int left_speed = speed;
+    int right_speed = speed;
+
+    double pctComplete = (double)time_step/arc1;
+    double scaled_rad = pctComplete;
+
+    if(!mirror)
+      left_speed *= scaled_rad;
+    else
+      right_speed *= scaled_rad;
+
+    //assign drive motor speeds
+    left_drive_vel(left_speed);
+    right_drive_vel(right_speed);
+
+    time_step += 10;
+    delay(10);
+  }
+ 
+  //middle movement
+  time_step = 0;
+  left_drive_vel(max);
+  right_drive_vel(max);
+  while(time_step < mid){
+    time_step += 10;
+    delay(10);
+  }
+
+  //final arc
+  time_step = 0;
+  mirror = !mirror;
+  while(isDriving() || time_step < 250){
+
+    //speed
+    int error = arc2-time_step;
+    int speed = error*arcKP;
+
+    //speed limiting
+    if(speed > max)
+      speed = max;
+    if(speed < -max)
+      speed = -max;
+
+    //prevent backtracking
+    if(arc2 > 0){
+      if(speed < 0)
+        speed = 0;
+    }else{
+      if(speed > 0)
+        speed = 0;
+    }
+
+    speed = slew(speed); //slew
+
+    int left_speed = speed;
+    int right_speed = speed;
+    
+    double pctComplete = (double)time_step/arc2;
+    double scaled_rad = (1-pctComplete);
+
+    if(!mirror)
+      left_speed *= scaled_rad;
+    else
+      right_speed *= scaled_rad;
+
+    //assign drive motor speeds
+    left_drive_vel(left_speed);
+    right_drive_vel(right_speed);
+
+    //increment time step
+    time_step += 10;
+    delay(10);
+  }
+
+}
+
+void sLeft(int arc1, int mid, int arc2, int max){
+  scurve(false, arc1, mid, arc2, max);
+}
+
+void sRight(int arc1, int mid, int arc2, int max){
+  scurve(true, arc1, mid, arc2, max);
 }
 
 /**************************************************/
