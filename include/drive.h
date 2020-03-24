@@ -18,6 +18,8 @@ void arcLeft(int length, double rad, int max = 100, int type = 0);
 void arcRight(int length, double rad, int max = 100, int type = 0);
 void sLeft(int arc1, int mid, int arc2, int max = 100);
 void sRight(int arc1, int mid, int arc2, int max = 100);
+void _sLeft(int arc1, int mid, int arc2, int max = 100);
+void _sRight(int arc1, int mid, int arc2, int max = 100);
 
 void setSpeed(int speed);
 void setBrakeMode(brakeType b);

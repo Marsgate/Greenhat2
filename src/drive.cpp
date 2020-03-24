@@ -21,9 +21,9 @@ const double degree_constant = 2.3; //ticks per degree
 //advanced tuning (PID and slew)
 
 //slew control (autonomous only)
-const int arc_step = 3;
 const int accel_step = 8; //smaller number = more slew
 const int deccel_step = 200; //200 = no slew
+const int arc_step = 2; // acceleration for arcs
 
 //straight driving constants
 const double driveKP = .3;
@@ -34,7 +34,7 @@ const double turnKP = .8;
 const double turnKD = 3;
 
 //arc constants
-const double arcKP = .15;
+const double arcKP = .05;
 
 
 /**************************************************/
@@ -116,7 +116,7 @@ bool isDriving(){
   static int last = 0;
   static int lastTarget = 0;
 
-  int curr = left2.rotation(rotationUnits::deg);
+  int curr = (left2.rotation(deg) + right2.rotation(deg))/2;
 
   int target = turnTarget;
   if(driveMode == 1)
@@ -214,11 +214,13 @@ void arc(bool mirror, int arc_length, double rad, int max, int type){
   }
 
   //fix jerk bug between velocity movements
-  leftMotors.stop();
-  rightMotors.stop();
-  delay(10);
+  if(type != 2){
+    leftMotors.stop();
+    rightMotors.stop();
+    delay(10);
+  }
 
-  while(isDriving() || time_step < 25){
+  while(time_step < arc_length){
 
     //speed
     int error = arc_length-time_step;
@@ -234,20 +236,15 @@ void arc(bool mirror, int arc_length, double rad, int max, int type){
       speed = -max;
 
     //prevent backtracking
-    if(arc_length > 0){
-      if(speed < 0)
-        speed = 0;
-    }else{
-      if(speed > 0)
-        speed = 0;
-    }
+    if(speed < 0)
+      speed = 0;
 
     speed = slew(speed); //slew
 
     if(reversed)
       speed = -speed;
 
-    double scaled_speed = rad;
+    double scaled_speed = speed*rad;
 
     if(type == 1)
       scaled_speed = speed * (double)time_step/arc_length;
@@ -262,6 +259,11 @@ void arc(bool mirror, int arc_length, double rad, int max, int type){
     time_step += 10;
     delay(10);
   }
+
+  if(type != 1){
+    leftMotors.stop();
+    rightMotors.stop();
+  }
 }
 
 void arcLeft(int arc_length, double rad, int max, int type){
@@ -273,11 +275,6 @@ void arcRight(int arc_length, double rad, int max, int type){
 }
 
 void scurve(bool mirror, int arc1, int mid, int arc2, int max){
-
-  //scaling based on max speed;
-  arc1 *= (float)40/max;
-  mid *= (float)40/max;
-  arc2 *= (float)40/max;
 
   arc(mirror, arc1, 0, max, 1);
  
@@ -297,6 +294,14 @@ void sLeft(int arc1, int mid, int arc2, int max){
 
 void sRight(int arc1, int mid, int arc2, int max){
   scurve(true, arc1, mid, arc2, max);
+}
+
+void _sLeft(int arc1, int mid, int arc2, int max){
+  scurve(true, -arc1, mid, -arc2, -max);
+}
+
+void _sRight(int arc1, int mid, int arc2, int max){
+  scurve(false, -arc1, -mid, -arc2, max);
 }
 
 /**************************************************/
