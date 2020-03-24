@@ -39,36 +39,32 @@ const double arcKP = .15;
 
 /**************************************************/
 //edit below with caution!!!
-
-
-#define MAX 100;
-
-static int driveMode = 1;
+static int driveMode = 0;
 static int driveTarget = 0;
 static int turnTarget = 0;
-static int maxSpeed = MAX;
+static int maxSpeed = 100;
 
 //gyro
 inertial iSens(gyro_port);
 
 //motors
-motor left1(left_front, gearSetting::ratio6_1, 0);
-motor left2(left_rear, gearSetting::ratio6_1, 0);
-motor right1(right_front, gearSetting::ratio6_1, 1);
-motor right2(right_rear, gearSetting::ratio6_1, 1);
+motor left1(left_front, gearSetting::ratio18_1, 0);
+motor left2(left_rear, gearSetting::ratio18_1, 0);
+motor right1(right_front, gearSetting::ratio18_1, 1);
+motor right2(right_rear, gearSetting::ratio18_1, 1);
+
+motor_group leftMotors = {left1, left2}, rightMotors = {right1, right2};
 
 /**************************************************/
 //basic control
 void left_drive(int vel){
   vel *= 120;
-  left1.spin(directionType::fwd, vel, voltageUnits::mV);
-  left2.spin(directionType::fwd, vel, voltageUnits::mV);
+  leftMotors.spin(directionType::fwd, vel, voltageUnits::mV);
 }
 
 void right_drive(int vel){
   vel *= 120;
-  right1.spin(directionType::fwd, vel, voltageUnits::mV);
-  right2.spin(directionType::fwd, vel, voltageUnits::mV);
+  rightMotors.spin(directionType::fwd, vel, voltageUnits::mV);
 }
 
 void timeDrive(int t, int speed){
@@ -78,7 +74,6 @@ void timeDrive(int t, int speed){
 }
 
 void reset(){
-  driveMode = 0;
   left1.resetRotation();
   left2.resetRotation();
   right1.resetRotation();
@@ -87,18 +82,6 @@ void reset(){
 
 int drivePos(){
   return (left1.rotation(rotationUnits::deg) + left2.rotation(rotationUnits::deg))/2;
-}
-
-/**************************************************/
-//Velocity control
-void left_drive_vel(int vel){
-  left1.spin(fwd, vel, pct);
-  left2.spin(fwd, vel, pct);
-}
-
-void right_drive_vel(int vel){
-  right1.spin(fwd, vel, pct);
-  right2.spin(fwd, vel, pct);
 }
 
 /**************************************************/
@@ -222,13 +205,20 @@ void arc(bool mirror, int arc_length, double rad, int max){
   reset();
   int time_step = 0;
   driveMode = 0;
+  bool reversed = false;
+
+  //reverse the movement if the length is negative
+  if(arc_length < 0){
+    reversed = true;
+    arc_length = -arc_length;
+  }
 
   //fix jerk bug between velocity movements
-  left_drive_vel(0);
-  right_drive_vel(0);
+  leftMotors.stop();
+  rightMotors.stop();
   delay(10);
 
-  while(isDriving() || time_step < 250){
+  while(isDriving() || time_step < 25){
 
     //speed
     int error = arc_length-time_step;
@@ -251,20 +241,19 @@ void arc(bool mirror, int arc_length, double rad, int max){
 
     speed = slew(speed); //slew
 
-    int left_speed = speed;
-    int right_speed = speed;
-    
-    if(!mirror)
-      left_speed *= rad;
-    else
-      right_speed *= rad;
+    if(reversed)
+      speed = -speed;
+
+    double scaled_speed = rad;
+    if(rad == 0)
+      scaled_speed = speed * (1-(double)time_step/arc_length);
 
     //assign drive motor speeds
-    left_drive_vel(left_speed);
-    right_drive_vel(right_speed);
+    leftMotors.spin(fwd, mirror ? speed : scaled_speed, pct);
+    rightMotors.spin(fwd, mirror ? scaled_speed : speed, pct);
 
     //increment time step
-    time_step += 10;
+    time_step++;
     delay(10);
   }
 }
@@ -281,100 +270,53 @@ void scurve(bool mirror, int arc1, int mid, int arc2, int max){
   reset();
   int time_step = 0;
   driveMode = 0;
+  bool reversed = false;
 
   //fix jerk bug between velocity movements
-  left_drive_vel(0);
-  right_drive_vel(0);
+  leftMotors.stop();
+  rightMotors.stop();
   delay(10);
-
-  if(arc2 == 0)
-    arc2 = arc1;
 
   //scaling based on max speed;
   arc1 *= (float)40/max;
   mid *= (float)40/max;
   arc2 *= (float)40/max;
 
-  arc2 += 150;
+  //reverse the movement if the length is negative
+  if(arc1 < 0){
+    reversed = true;
+    arc1 = -arc1;
+  }
 
   //first arc
   while (time_step < arc1){
 
     int speed = slew(max); //slew
+    
+    if(reversed)
+      speed = -speed;
 
-    int left_speed = speed;
-    int right_speed = speed;
-
-    double pctComplete = (double)time_step/arc1;
-    double scaled_rad = pctComplete;
-
-    if(!mirror)
-      left_speed *= scaled_rad;
-    else
-      right_speed *= scaled_rad;
+    double scaled_speed = speed * (double)time_step/arc1;
 
     //assign drive motor speeds
-    left_drive_vel(left_speed);
-    right_drive_vel(right_speed);
+    leftMotors.spin(fwd, mirror ? speed : scaled_speed, pct);
+    rightMotors.spin(fwd, mirror ? scaled_speed : speed, pct);
 
-    time_step += 10;
+    time_step++;
     delay(10);
   }
  
   //middle movement
   time_step = 0;
-  left_drive_vel(max);
-  right_drive_vel(max);
+  leftMotors.spin(fwd, max, pct);
+    rightMotors.spin(fwd, max, pct);
   while(time_step < mid){
-    time_step += 10;
+    time_step++;
     delay(10);
   }
 
   //final arc
-  time_step = 0;
-  mirror = !mirror;
-  while(isDriving() || time_step < 250){
-
-    //speed
-    int error = arc2-time_step;
-    int speed = error*arcKP;
-
-    //speed limiting
-    if(speed > max)
-      speed = max;
-    if(speed < -max)
-      speed = -max;
-
-    //prevent backtracking
-    if(arc2 > 0){
-      if(speed < 0)
-        speed = 0;
-    }else{
-      if(speed > 0)
-        speed = 0;
-    }
-
-    speed = slew(speed); //slew
-
-    int left_speed = speed;
-    int right_speed = speed;
-    
-    double pctComplete = (double)time_step/arc2;
-    double scaled_rad = (1-pctComplete);
-
-    if(!mirror)
-      left_speed *= scaled_rad;
-    else
-      right_speed *= scaled_rad;
-
-    //assign drive motor speeds
-    left_drive_vel(left_speed);
-    right_drive_vel(right_speed);
-
-    //increment time step
-    time_step += 10;
-    delay(10);
-  }
+  arc(!mirror, arc2, 0, max);
 
 }
 
