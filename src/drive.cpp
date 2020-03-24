@@ -201,7 +201,7 @@ void fastDrive(double sp, int speed){
     while(drivePos() > sp * distance_constant) task::sleep(20);
 }
 
-void arc(bool mirror, int arc_length, double rad, int max){
+void arc(bool mirror, int arc_length, double rad, int max, int type){
   reset();
   int time_step = 0;
   driveMode = 0;
@@ -224,6 +224,9 @@ void arc(bool mirror, int arc_length, double rad, int max){
     int error = arc_length-time_step;
     int speed = error*arcKP;
 
+    if(type == 1)
+      speed = max;
+
     //speed limiting
     if(speed > max)
       speed = max;
@@ -245,7 +248,10 @@ void arc(bool mirror, int arc_length, double rad, int max){
       speed = -speed;
 
     double scaled_speed = rad;
-    if(rad == 0)
+
+    if(type == 1)
+      scaled_speed = speed * (double)time_step/arc_length;
+    else if(type == 2)
       scaled_speed = speed * (1-(double)time_step/arc_length);
 
     //assign drive motor speeds
@@ -253,70 +259,35 @@ void arc(bool mirror, int arc_length, double rad, int max){
     rightMotors.spin(fwd, mirror ? scaled_speed : speed, pct);
 
     //increment time step
-    time_step++;
+    time_step += 10;
     delay(10);
   }
 }
 
-void arcLeft(int arc_length, double rad, int max){
-  arc(false, arc_length, rad, max);
+void arcLeft(int arc_length, double rad, int max, int type){
+  arc(false, arc_length, rad, max, type);
 }
 
-void arcRight(int arc_length, double rad, int max){
-  arc(true, arc_length, rad, max);
+void arcRight(int arc_length, double rad, int max, int type){
+  arc(true, arc_length, rad, max, type);
 }
 
 void scurve(bool mirror, int arc1, int mid, int arc2, int max){
-  reset();
-  int time_step = 0;
-  driveMode = 0;
-  bool reversed = false;
-
-  //fix jerk bug between velocity movements
-  leftMotors.stop();
-  rightMotors.stop();
-  delay(10);
 
   //scaling based on max speed;
   arc1 *= (float)40/max;
   mid *= (float)40/max;
   arc2 *= (float)40/max;
 
-  //reverse the movement if the length is negative
-  if(arc1 < 0){
-    reversed = true;
-    arc1 = -arc1;
-  }
-
-  //first arc
-  while (time_step < arc1){
-
-    int speed = slew(max); //slew
-    
-    if(reversed)
-      speed = -speed;
-
-    double scaled_speed = speed * (double)time_step/arc1;
-
-    //assign drive motor speeds
-    leftMotors.spin(fwd, mirror ? speed : scaled_speed, pct);
-    rightMotors.spin(fwd, mirror ? scaled_speed : speed, pct);
-
-    time_step++;
-    delay(10);
-  }
+  arc(mirror, arc1, 0, max, 1);
  
   //middle movement
-  time_step = 0;
   leftMotors.spin(fwd, max, pct);
-    rightMotors.spin(fwd, max, pct);
-  while(time_step < mid){
-    time_step++;
-    delay(10);
-  }
+  rightMotors.spin(fwd, max, pct);
+  delay(mid);
 
   //final arc
-  arc(!mirror, arc2, 0, max);
+  arc(!mirror, arc2, 0, max, 2);
 
 }
 

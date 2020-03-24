@@ -14,8 +14,8 @@ void turn(double sp, int speed = 100);
 void fastDrive(double sp, int speed = 100);
 void timeDrive(int t, int speed = 100);
 
-void arcLeft(int length, double rad, int max = 100);
-void arcRight(int length, double rad, int max = 100);
+void arcLeft(int length, double rad, int max = 100, int type = 0);
+void arcRight(int length, double rad, int max = 100, int type = 0);
 void sLeft(int arc1, int mid, int arc2, int max = 100);
 void sRight(int arc1, int mid, int arc2, int max = 100);
 
