@@ -65,7 +65,7 @@ arcade(Controller1.axis3.position(), Controller1.axis4.position());
 Tank control is the default in the template
 
 ## Autonomous movement
-With the drive functions properly configured and tuned, we can now control our robot’s movement autonomously. The drive function interprets positive numbers such as `2.5` as forward movement, and it interprets negative numbers such as `-0.8` as backwards movement. Similarly, the turn function interpret positive numbers as a left turn, and negative numbers as a right turn. 
+With the drive motors configured, we can now control our robot’s movement autonomously. The drive function interprets positive numbers such as `2.5` as forward movement, and it interprets negative numbers such as `-0.8` as backwards movement. Similarly, the turn function interpret positive numbers as a left turn, and negative numbers as a right turn. 
 
 Here is an example of some common autonomous movements you may perform
 ```
