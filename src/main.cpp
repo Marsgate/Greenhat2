@@ -14,7 +14,9 @@ void autonomous(void) {
 void usercontrol(void) {
   while (1) {
 
-    tankOp();
+    tank(Controller1.Axis3.position(),
+      Controller1.Axis2.position());
+
     if(Controller1.ButtonR1.pressing()){
       intake.spin(fwd, 100, pct);
     }else if(Controller1.ButtonR2.pressing()){

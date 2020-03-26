@@ -48,40 +48,47 @@ static int maxSpeed = 100;
 inertial iSens(gyro_port);
 
 //motors
-motor left1(left_front, gearSetting::ratio18_1, 0);
-motor left2(left_rear, gearSetting::ratio18_1, 0);
-motor right1(right_front, gearSetting::ratio18_1, 1);
-motor right2(right_rear, gearSetting::ratio18_1, 1);
+motor left1(left_front, ratio18_1, 0);
+motor left2(left_rear, ratio18_1, 0);
+motor right1(right_front, ratio18_1, 1);
+motor right2(right_rear, ratio18_1, 1);
 
-motor_group leftMotors = {left1, left2}, rightMotors = {right1, right2};
+motor_group leftMotors = {left1, left2};
+motor_group rightMotors = {right1, right2};
+
+/**************************************************/
+//task::sleep shorthand
+void delay(int sleepTime){
+  task::sleep(sleepTime);
+}
 
 /**************************************************/
 //basic control
 void left_drive(int vel){
   vel *= 120;
-  leftMotors.spin(directionType::fwd, vel, voltageUnits::mV);
+  leftMotors.spin(fwd, vel, voltageUnits::mV);
 }
 
 void right_drive(int vel){
   vel *= 120;
-  rightMotors.spin(directionType::fwd, vel, voltageUnits::mV);
+  rightMotors.spin(fwd, vel, voltageUnits::mV);
 }
 
-void timeDrive(int t, int speed){
-  left_drive(speed);
-  right_drive(speed);
-  delay(t);
+void setBrakeMode(brakeType b){
+  leftMotors.setStopping(b);
+  rightMotors.setStopping(b);
+  leftMotors.stop();
+  rightMotors.stop();
 }
 
 void reset(){
-  left1.resetRotation();
-  left2.resetRotation();
-  right1.resetRotation();
-  right2.resetRotation();
+  leftMotors.resetRotation();
+  rightMotors.resetRotation();
+  setBrakeMode(coast);
 }
 
 int drivePos(){
-  return (left1.rotation(rotationUnits::deg) + left2.rotation(rotationUnits::deg))/2;
+  return (rightMotors.rotation(deg) + leftMotors.rotation(deg))/2;
 }
 
 /**************************************************/
@@ -110,13 +117,13 @@ int slew(int speed){
 }
 
 /**************************************************/
-//feedback
+//drive settling
 bool isDriving(){
   static int count = 0;
   static int last = 0;
   static int lastTarget = 0;
 
-  int curr = (left2.rotation(deg) + right2.rotation(deg))/2;
+  int curr = drivePos();
 
   int target = turnTarget;
   if(driveMode == 1)
@@ -140,65 +147,64 @@ bool isDriving(){
     return true;
 }
 
-/**************************************************/
-//drive modifiers
-void setSpeed(int speed){
-  maxSpeed = speed;
-}
-
-void setBrakeMode(brakeType b){
-  left1.setStopping(b);
-  left2.setStopping(b);
-  right1.setStopping(b);
-  right2.setStopping(b);
-  left1.stop();
-  left2.stop();
-  right1.stop();
-  right2.stop();
+void waitUntilSettled(){
+  while(isDriving()) delay(10);
 }
 
 /**************************************************/
 //autonomous functions
-void driveAsync(double sp){
+void driveAsync(double sp, int max){
   sp *= distance_constant;
   reset();
+  maxSpeed = max;
   driveTarget = sp;
   driveMode = 1;
 }
 
-void turnAsync(double sp){
+void turnAsync(double sp, int max){
   sp *= degree_constant;
   reset();
+  maxSpeed = max;
   turnTarget = sp;
   driveMode = -1;
 }
 
-void drive(double sp, int speed){
-  driveAsync(sp);
-  setSpeed(speed);
-  task::sleep(450);
-  while(isDriving()) task::sleep(20);
+void drive(double sp, int max){
+  driveAsync(sp, max);
+  delay(450);
+  while(isDriving()) delay(20);
 }
 
-void turn(double sp, int speed){
-  turnAsync(sp);
-  setSpeed(speed);
-  task::sleep(450);
-  while(isDriving()) task::sleep(20);
+void turn(double sp, int max){
+  turnAsync(sp, max);
+  delay(450);
+  while(isDriving()) delay(20);
 }
 
-void fastDrive(double sp, int speed){
-  if(sp < 0) speed = -speed;
+void fastDrive(double sp, int max){
+  if(sp < 0) max = -max;
   reset();
-  lastSpeed = speed;
+  lastSpeed = max;
   driveMode = 0;
-  left_drive(speed);
-  right_drive(speed);
+  left_drive(max);
+  right_drive(max);
 
   if(sp > 0)
-    while(drivePos() < sp * distance_constant) task::sleep(20);
+    while(drivePos() < sp * distance_constant) delay(20);
   else
-    while(drivePos() > sp * distance_constant) task::sleep(20);
+    while(drivePos() > sp * distance_constant) delay(20);
+}
+
+void timeDrive(int t, int left, int right){
+  left_drive(left);
+  right_drive(right == 0 ? left : right);
+  delay(t);
+}
+
+void velocityDrive(int t, int max){
+  leftMotors.spin(fwd, max, pct);
+  rightMotors.spin(fwd, max, pct);
+  delay(t);
 }
 
 void arc(bool mirror, int arc_length, double rad, int max, int type){
@@ -276,12 +282,11 @@ void arcRight(int arc_length, double rad, int max, int type){
 
 void scurve(bool mirror, int arc1, int mid, int arc2, int max){
 
+  //first arc
   arc(mirror, arc1, 0, max, 1);
  
   //middle movement
-  leftMotors.spin(fwd, max, pct);
-  rightMotors.spin(fwd, max, pct);
-  delay(mid);
+  velocityDrive(mid, max);
 
   //final arc
   arc(!mirror, arc2, 0, max, 2);
@@ -313,7 +318,7 @@ int driveTask(){
   int sp;
 
   while(1){
-    task::sleep (20);
+    delay(20);
 
     if(driveMode == 1){
       sp = driveTarget;
@@ -328,7 +333,7 @@ int driveTask(){
     }
 
     //read sensors
-    int sv = (right1.rotation(rotationUnits::deg) + left1.rotation(rotationUnits::deg)*driveMode)/2;
+    int sv = (right1.rotation(deg) + left1.rotation(deg)*driveMode)/2;
     if(gyro_port != 0 && driveMode == -1){
       sv = -iSens.rotation(deg);
     }
@@ -361,26 +366,17 @@ void initDrive(){
   }
 }
 
-void delay(int sleepTime){
-  task::sleep(sleepTime);
-}
-
 /**************************************************/
 //operator control
-void tankOp(){
+void tank(int left, int right){
   driveMode = 0; //turns off autonomous tasks
-  int lJoy = Controller1.Axis3.position();
-  int rJoy = Controller1.Axis2.position();
-
-  left_drive(lJoy);
-  right_drive(rJoy);
+  left_drive(left);
+  right_drive(right);
 }
 
-void arcadeOp(){
-  driveMode = 0; //turns off autonomous tasks
-  int vJoy = Controller1.Axis3.position();
-  int hJoy = Controller1.Axis4.position();
+void arcade(int vertical, int horizontal){
+  driveMode = 0; //turns off autonomous task
 
-  left_drive(vJoy + hJoy);
-  right_drive(vJoy - hJoy);
+  left_drive(vertical + horizontal);
+  right_drive(vertical - horizontal);
 }
