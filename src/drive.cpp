@@ -9,6 +9,7 @@ const int left_front = PORT1;
 const int left_rear = PORT2;
 const int right_front = PORT3;
 const int right_rear = PORT4;
+gearSetting gear_ratio = ratio18_1;
 
 //gyro port (set to 0 if not using)
 const int gyro_port = 0;
@@ -48,10 +49,10 @@ static int maxSpeed = 100;
 inertial iSens(gyro_port);
 
 //motors
-motor left1(left_front, ratio18_1, 0);
-motor left2(left_rear, ratio18_1, 0);
-motor right1(right_front, ratio18_1, 1);
-motor right2(right_rear, ratio18_1, 1);
+motor left1(left_front, gear_ratio, 0);
+motor left2(left_rear, gear_ratio, 0);
+motor right1(right_front, gear_ratio, 1);
+motor right2(right_rear, gear_ratio, 1);
 
 motor_group leftMotors = {left1, left2};
 motor_group rightMotors = {right1, right2};
@@ -172,13 +173,13 @@ void turnAsync(double sp, int max){
 void drive(double sp, int max){
   driveAsync(sp, max);
   delay(450);
-  while(isDriving()) delay(20);
+  waitUntilSettled();
 }
 
 void turn(double sp, int max){
   turnAsync(sp, max);
   delay(450);
-  while(isDriving()) delay(20);
+  waitUntilSettled();
 }
 
 void fastDrive(double sp, int max){
@@ -253,9 +254,9 @@ void arc(bool mirror, int arc_length, double rad, int max, int type){
     double scaled_speed = speed*rad;
 
     if(type == 1)
-      scaled_speed = speed * (double)time_step/arc_length;
+      scaled_speed *= (double)time_step/arc_length;
     else if(type == 2)
-      scaled_speed = speed * (1-(double)time_step/arc_length);
+      scaled_speed *= (1-(double)time_step/arc_length);
 
     //assign drive motor speeds
     leftMotors.spin(fwd, mirror ? speed : scaled_speed, pct);
@@ -283,13 +284,13 @@ void arcRight(int arc_length, double rad, int max, int type){
 void scurve(bool mirror, int arc1, int mid, int arc2, int max){
 
   //first arc
-  arc(mirror, arc1, 0, max, 1);
+  arc(mirror, arc1, 1, max, 1);
  
   //middle movement
   velocityDrive(mid, max);
 
   //final arc
-  arc(!mirror, arc2, 0, max, 2);
+  arc(!mirror, arc2, 1, max, 2);
 
 }
 
