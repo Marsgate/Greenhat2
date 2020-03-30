@@ -59,8 +59,8 @@ If you have an X-drive, mecanum drive, an H-drive, or any other non-standard typ
 
 There are two default operator control modes supported, tank and arcade. Put one of the following into your usercontrol loop:
 ```
-tank(Controller1.axis3.position(), Controller1.axis2.position());
-arcade(Controller1.axis3.position(), Controller1.axis4.position());
+tank(Controller1.Axis3.position(), Controller1.Axis2.position());
+arcade(Controller1.Axis3.position(), Controller1.Axis4.position());
 ```
 Tank control is the default in the template
 
