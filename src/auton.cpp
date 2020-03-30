@@ -9,10 +9,10 @@ void blueAuton(){
     
 }
 
-void autonSelector(){
-  if(Brain.ThreeWirePort.A.value()){
+void autonomous(){
+  if(selector::auton == 1){
     redAuton();
-  }else if (Brain.ThreeWirePort.B.value()){
+  }else if (selector::auton == 2){
     blueAuton();
   }
 }

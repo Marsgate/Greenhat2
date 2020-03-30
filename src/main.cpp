@@ -4,11 +4,8 @@ using namespace vex;
 competition Competition;
 
 void pre_auton(void) {
+  selector::init();
   vexcodeInit();
-}
-
-void autonomous(void) {
-  autonSelector();
 }
 
 void usercontrol(void) {

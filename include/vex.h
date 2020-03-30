@@ -10,6 +10,7 @@
 #include "robot-config.h"
 #include "drive.h"
 #include "auton.h"
+#include "selector.h"
 
 #define waitUntil(condition)                                                   \
   do {                                                                         \
