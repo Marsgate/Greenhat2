@@ -41,6 +41,7 @@ const int left_front = PORT1;
 const int left_rear = PORT2;
 const int right_front = PORT3;
 const int right_rear = PORT4;
+gearSetting gear_ratio = ratio18_1;
 
 //distance constants
 const int distance_constant = 545; //ticks per tile
@@ -54,7 +55,7 @@ If your drive base only has 2 motors, set both left motors to the same port and 
 If your drive base has 6 motors the process is a little more complicated.
 You can see the process for setting that up [here](https://docs.google.com/document/d/12pz7LVHyEeSdbG2O-37dH9zD1lk8FfGItbkvUd42U50/edit?usp=sharing) 
 
-If your drive is using torque or turbo motors, you need to change the gear ratios of the motors in drive.cpp
+If your drive is using torque or turbo motors, you need to change the gear_ratio to `ratio36_1` and `ratio6_1` respectively.
 
 If you have an X-drive, mecanum drive, an H-drive, or any other non-standard type of drive, this library won't work without a bit of a makeover. Your options are to either modify this library, or write your own drive code (sorry).
 
