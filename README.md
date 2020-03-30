@@ -24,7 +24,8 @@ Greenhat is a library that makes programming the chassis of a vex v5 robot a pie
 ### Adding Greenhat to an existing project
 1. Download and unzip greenhat.
 2. Copy and paste the drive.h and drive.cpp files from greenhat into your own project.
-3. Add `#include "drive.h"` to the vex.h file
+3. Add `#include "drive.h"` to the vex.h file and `initDrive()` to the initialization.
+4. Add `#include "selector.h"` to the vex.h file and `selector::init()` to the initialization (optional).
 
 
 ## Getting started
