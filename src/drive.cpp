@@ -221,7 +221,7 @@ void arc(bool mirror, int arc_length, double rad, int max, int type){
   }
 
   //fix jerk bug between velocity movements
-  if(type != 2){
+  if(type < 2){
     leftMotors.stop();
     rightMotors.stop();
     delay(10);
@@ -233,7 +233,7 @@ void arc(bool mirror, int arc_length, double rad, int max, int type){
     int error = arc_length-time_step;
     int speed = error*arcKP;
 
-    if(type == 1)
+    if(type == 1 || type == 2)
       speed = max;
 
     //speed limiting
@@ -256,6 +256,8 @@ void arc(bool mirror, int arc_length, double rad, int max, int type){
     if(type == 1)
       scaled_speed *= (double)time_step/arc_length;
     else if(type == 2)
+      scaled_speed *= std::abs(2*(.5-(double)time_step/arc_length));
+    else if(type == 3)
       scaled_speed *= (1-(double)time_step/arc_length);
 
     //assign drive motor speeds
@@ -267,7 +269,7 @@ void arc(bool mirror, int arc_length, double rad, int max, int type){
     delay(10);
   }
 
-  if(type != 1){
+  if(type != 1 && type != 2){
     leftMotors.stop();
     rightMotors.stop();
   }
