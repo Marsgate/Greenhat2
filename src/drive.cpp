@@ -89,7 +89,7 @@ void reset(){
 }
 
 int drivePos(){
-  return (rightMotors.rotation(deg) + leftMotors.rotation(deg))/2;
+  return (right1.rotation(deg) + left1.rotation(deg)*driveMode)/2;
 }
 
 /**************************************************/
@@ -336,7 +336,7 @@ int driveTask(){
     }
 
     //read sensors
-    int sv = (right1.rotation(deg) + left1.rotation(deg)*driveMode)/2;
+    int sv = drivePos();
     if(gyro_port != 0 && driveMode == -1){
       sv = -iSens.rotation(deg);
     }
