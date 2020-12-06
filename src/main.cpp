@@ -30,7 +30,7 @@ void usercontrol(void) {
     }
 
     //autonomous button (starts auton from driver control for testing purposes)
-    if(Controller1.ButtonLeft.pressing() && !Competition.isEnabled()){
+    if(Controller1.ButtonLeft.pressing() && !Competition.isFieldControl() && !Competition.isCompetitionSwitch()){
       //task auton_timer(autonTimer);
       autonomous();
     }
