@@ -8,6 +8,13 @@ void pre_auton(void) {
   vexcodeInit();
 }
 
+
+int autonTimer(){
+  wait(60, sec);
+  Competition.test_disable();
+  return 0;
+}
+
 void usercontrol(void) {
   while (1) {
 
@@ -23,7 +30,8 @@ void usercontrol(void) {
     }
 
     //autonomous button (starts auton from driver control for testing purposes)
-    if(Controller1.ButtonLeft.pressing() && !Competition.isFieldControl()){
+    if(Controller1.ButtonLeft.pressing() && !Competition.isEnabled()){
+      //task auton_timer(autonTimer);
       autonomous();
     }
 
